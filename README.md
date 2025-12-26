@@ -4,8 +4,10 @@ This GIT repository can be used to download LUCAS Cover photos for the campaigns
 
 
 # How to run
-To run this script form the LUCAS webiste the lucas_cover_attr.csv and EU_LUCAS_2022.csv need to be downloaded and placed into the images_22 or images_06to18 folders.
+To run this script the lucas_cover_attr.csv and EU_LUCAS_2022.csv need to be downloaded and placed into the images_22 or images_06to18 folders:
 
+[Data for all 27 countries](https://ec.europa.eu/eurostat/web/lucas/database/2022)
+[lucas_cover_attr.csv](https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/LUCAS/LUCAS_COVER/tables/)
 ## LUCAS 2022
 First download the metadata EU_LUCAS_22.csv from here: [Data for all 27 countries](https://ec.europa.eu/eurostat/web/lucas/database/2022)
 
