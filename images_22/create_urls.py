@@ -1,33 +1,53 @@
 #!/usr/bin/env python3
 import pandas as pd
-import os
+from pathlib import Path
 
-# Read CSV and image directory
-df = pd.read_csv("images_22/EU_LUCAS_2022.csv")
-image_dir = "crop_images_22"
+# Configuration
+CSV_PATH = "images_22/EU_LUCAS_2022.csv"
+OUTPUT_TXT = "images_22/22_image_urls.txt"
+YEAR = "2022"
+BASE_URL = "https://gisco-services.ec.europa.eu/lucas/photos"
+IMAGE_SUFFIX = "LCLU_CropLC1.jpg"
 
-# Filter: only keep rows where SURVEY_LC1 starts with 'B' (crops), excluding 'Bx1' and 'Bx2'
-df = df[df['SURVEY_LC1'].str.startswith('B', na=False) & 
-        ~df['SURVEY_LC1'].isin(['Bx1', 'Bx2'])]
+# Load CSV
+df = pd.read_csv(CSV_PATH)
 
-# Get all downloaded filenames
-downloaded_files = set(os.listdir(image_dir)) if os.path.exists(image_dir) else set()
+# Ensure required columns exist
+required_cols = {"POINT_ID", "SURVEY_LC1", "POINT_NUTS0"}
+missing_cols = required_cols - set(df.columns)
+if missing_cols:
+    raise ValueError(f"Missing required columns in CSV: {missing_cols}")
 
-# Extract POINT_ID from filenames (positions 4-12: 8 digits after '2022')
-downloaded_ids = set()
-for filename in downloaded_files:
-    if filename.startswith('2022') and len(filename) >= 12:
-        downloaded_ids.add(filename[4:12])  # Extract 8-digit ID
 
-# Filter CSV: keep only rows where POINT_ID is NOT in downloaded_ids
-df['POINT_ID'] = df['POINT_ID'].astype(str).str.zfill(8)
-missing_df = df[~df['POINT_ID'].isin(downloaded_ids)]
+# Filter Landuse Class, only Crops (B) remain. Exclude Bx1 and Bx2 as these include multiple crops in one image.
+df = df[
+    df["SURVEY_LC1"].str.startswith("B", na=False)
+    & ~df["SURVEY_LC1"].isin(["Bx1", "Bx2"])
+]
 
-# Save result
-missing_df.to_csv("images_22/missing_crop_images_metadata.csv", index=False)
 
-# Print summary
-print(f"Total crop rows (B* except Bx1/Bx2): {len(df)}")
-print(f"Downloaded: {len(df) - len(missing_df)}")
-print(f"Missing: {len(missing_df)}")
-print(f"Saved to: missing_crop_images_metadata.csv")
+# Build URLs using metainformation from EU_LUCAS_2022.csv
+urls = []
+
+for _, row in df.iterrows():
+    pid = str(row["POINT_ID"])
+    country = row["POINT_NUTS0"]
+
+    # Directory structure derived from POINT_ID
+    dir1 = pid[0:3]
+    dir2 = pid[3:6]
+
+    # Construct URL
+    url = f"{BASE_URL}/{YEAR}/{country}/{dir1}/{dir2}/{YEAR}{pid}{IMAGE_SUFFIX}"
+    urls.append(url)
+
+# Write URL list
+output_path = Path(OUTPUT_TXT)
+output_path.parent.mkdir(parents=True, exist_ok=True)
+
+with output_path.open("w") as f:
+    f.write("\n".join(urls) + "\n")
+
+# Summary
+print(f"Total crop URLs created: {len(urls)}")
+print(f"Saved to: {output_path.resolve()}")
