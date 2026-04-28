@@ -2,7 +2,7 @@
 .venv
 crop_images_06to18/
 crop_images_22
-crop_images_all
+crop_images_22_sorted
 crop_images_balanced
 images_06to18/lucas_cover_attr.csv
 images_22/EU_LUCAS_2022.csv
