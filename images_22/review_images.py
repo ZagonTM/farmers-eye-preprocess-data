@@ -56,10 +56,7 @@ def review_class(source_dir, dest_dir, class_name, csv_path):
     total_files = len(all_files)
     already_done = len(processed_files)
     print(f"\nStarting review for class: {class_name}")
-    print(f"Progress: {already_done}/{total_files} ({already_done/total_files:.1%} done)")
-    print(f"Remaining: {len(files_to_review)}")
     print("-" * 40)
-    print("Controls: [Y] = Keep, [N] = Discard, [Q] = Quit")
 
     kept_count = 0
     discarded_count = 0
@@ -68,30 +65,20 @@ def review_class(source_dir, dest_dir, class_name, csv_path):
         src_filepath = os.path.join(class_source_path, filename)
         relative_path = os.path.join(class_name, filename)
 
-        # Read image
+        # Read image (just to check if valid)
         img = cv2.imread(src_filepath)
         if img is None:
             print(f"Warning: Could not read {filename}. Skipping.")
             continue
 
-        # Display image
-        window_title = f"{class_name} | {filename} | [K]eep [D]iscard [Q]uit"
-        cv2.namedWindow(window_title, cv2.WINDOW_NORMAL)
-        
-        # Resize if image is too large for screen
-        h, w = img.shape[:2]
-        if h > 800 or w > 1200:
-            scale = min(1200 / w, 800 / h)
-            img = cv2.resize(img, (int(w * scale), int(h * scale)))
-        
-        cv2.imshow(window_title, img)
-        
-        # Wait for key press
-        key = cv2.waitKey(0) & 0xFF
-        cv2.destroyAllWindows()
+        # Automatically open the image in VS Code for inspection
+        print(f"Opening image for inspection: {src_filepath}")
+        os.system(f"code {src_filepath}")
+
+        decision = input("Keep this image? (y/n/q): ").strip().lower()
 
         status = None
-        if key == KEY_KEEP:
+        if decision == 'y':
             # Copy to destination
             dst_filepath = os.path.join(class_dest_path, filename)
             # Handle duplicate filenames (unlikely in same class, but safe)
@@ -104,13 +91,27 @@ def review_class(source_dir, dest_dir, class_name, csv_path):
             kept_count += 1
             print(f"  ✓ Kept: {filename}")
         
-        elif key == KEY_DISCARD:
+        elif decision == 'n':
             status = 'discarded'
             discarded_count += 1
             print(f"  ✗ Discarded: {filename}")
         
-        elif key == KEY_QUIT:
+        elif decision == 'q':
             print("\nQuitting... Progress saved.")
+            # Calculate totals
+            total_kept = len(progress_df[(progress_df['status'] == 'kept') & (progress_df['class_name'] == class_name)])
+            total_discarded = len(progress_df[(progress_df['status'] == 'discarded') & (progress_df['class_name'] == class_name)])
+            total_reviewed = len(progress_df[progress_df['class_name'] == class_name])
+            print("\n" + "=" * 50)
+            print(f"Class '{class_name}' finished (quit early)!")
+            print(f"Kept this session: {kept_count}")
+            print(f"Discarded this session: {discarded_count}")
+            print(f"Reviewed this session: {kept_count + discarded_count}")
+            print(f"Kept total: {total_kept}")
+            print(f"Discarded total: {total_discarded}")
+            print(f"Reviewed total: {total_reviewed}")
+            print(f"Progress saved to: {csv_path}")
+            print("=" * 50)
             # Save progress before quitting
             save_progress(progress_df, csv_path)
             return
@@ -123,35 +124,34 @@ def review_class(source_dir, dest_dir, class_name, csv_path):
             # Save progress incrementally (safe against crashes)
             save_progress(progress_df, csv_path)
 
-    print("\n" + "=" * 50)
-    print(f"Class '{class_name}' finished!")
-    print(f"Total reviewed this session: {kept_count + discarded_count}")
-    print(f"Kept: {kept_count}, Discarded: {discarded_count}")
-    print(f"Progress saved to: {csv_path}")
-    print("=" * 50)
+            if status == 'kept':
+                total_kept = len(progress_df[(progress_df['status'] == 'kept') & (progress_df['class_name'] == class_name)])
+                print(f"You have kept {total_kept} images for this class so far!")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Interactive Image Review Tool")
-    parser.add_argument('--source', type=str, default='./crop_images_all',
+    parser.add_argument('--source', type=str, default='./crop_images_22_sorted',
                         help='Source directory containing class folders')
-    parser.add_argument('--dest', type=str, default='./crop_images_selected',
+    parser.add_argument('--dest', type=str, default='./crop_images_22_selected',
                         help='Destination directory for kept images')
     parser.add_argument('--class', type=str, required=True, dest='class_name',
                         help='Class name to review')
-    parser.add_argument('--csv', type=str, default='review_progress.csv',
-                        help='CSV file to track progress')
     
     args = parser.parse_args()
 
+    # Set class-specific CSV in dest directory
+    csv_path = os.path.join(args.dest, f'review_progress_{args.class_name}.csv')
+
     print(f"Source: {args.source}")
     print(f"Destination: {args.dest}")
+    print(f"CSV: {csv_path}")
     
     review_class(
         source_dir=args.source,
         dest_dir=args.dest,
         class_name=args.class_name,
-        csv_path=args.csv
+        csv_path=csv_path
     )
 
 
